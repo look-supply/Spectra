@@ -267,7 +267,7 @@ static bool loadSfStockData(const std::string& bundlePath) {
     f.read(reinterpret_cast<char*>(&version), 4);
     f.read(reinterpret_cast<char*>(&nNeg), 4);
     f.read(reinterpret_cast<char*>(&nPrt), 4);
-    if (!f || version != 3 || nNeg > SF_MAX_STOCKS || nPrt > SF_MAX_STOCKS) {
+    if (!f || version != 4 || nNeg > SF_MAX_STOCKS || nPrt > SF_MAX_STOCKS) {
         fprintf(stderr, "LoFiFxFilm: invalid spectral stock header\n");
         return false;
     }

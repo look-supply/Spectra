@@ -18,8 +18,8 @@
 
 static constexpr int SF_LUT_RES     = 33;   // 2D input LUT resolution
 static constexpr int SF_CURVE_N     = 512;  // Samples per characteristic curve
-static constexpr int SF_N_WAVEL     = 81;   // 380–780 nm at 5 nm steps
-static constexpr int SF_N_BANDS     = 27;   // 3 wavelengths per band
+static constexpr int SF_N_WAVEL     = 41;   // 380–780 nm at 10 nm steps
+static constexpr int SF_N_BANDS     = 13;   // 3 wavelengths per band (drop last 2 of 41)
 static constexpr int SF_LUT3D_SIZE  = 33;   // 3D film LUT resolution
 
 static constexpr int SF_MAX_STOCKS  = 64;   // Maximum stocks in binary file

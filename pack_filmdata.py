@@ -14,8 +14,9 @@ import os
 import struct
 import sys
 
-SF_N_WAVEL = 81
-SF_N_BANDS = 27
+SF_N_WAVEL = 41
+SF_N_BANDS = 13
+SF_N_WAVEL_USED = SF_N_BANDS * 3  # 39 — drop last 2 of 41
 SF_LUT3D_SIZE = 33
 SF_CURVE_N = 512
 SF_NAME_LEN = 64
@@ -73,7 +74,7 @@ def pack(stocks_dir, luts_dir, output_path):
     # Rewrite header properly
     buf = bytearray()
     buf.extend(b'SPFILM\0\0')
-    buf.extend(struct.pack('<I', 3))  # version
+    buf.extend(struct.pack('<I', 4))  # version
     buf.extend(struct.pack('<I', n_neg))
     buf.extend(struct.pack('<I', n_prt))
 

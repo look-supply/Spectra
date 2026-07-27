@@ -11,7 +11,7 @@ Usage:
 import sys, os, struct, numpy as np
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-# Use vendored spectral_film_lut (5nm steps, 81 wavelengths — archive version)
+# Use the submodule's spectral_film_lut (10nm steps, 41 wavelengths)
 sys.path.insert(0, os.path.join(SCRIPT_DIR, "vendor"))
 
 import colour
@@ -35,10 +35,12 @@ XYZ_to_DWG = np.array([
     [0.0648602355,  0.1091581735,  0.7615459883],
 ], dtype=np.float32)
 
-N_WAVEL = len(SPECTRAL_SHAPE.wavelengths)
-N_BANDS = N_WAVEL // 3
-PRINTER_LIGHTS_ARRAY = np.asarray(PRINTER_LIGHTS, dtype=np.float32)
-PRINTER_LIGHTS_27 = PRINTER_LIGHTS_ARRAY.reshape(N_BANDS, 3, 3).sum(axis=1)
+# SPECTRAL_SHAPE gives 41 wavelengths (380-780 at 10nm). We use 39 of 41 for banding.
+N_WAVEL = len(SPECTRAL_SHAPE.wavelengths)   # 41
+N_BANDS = (N_WAVEL // 3) * 3 // 3           # 13 (use first 39 of 41)
+N_WAVEL_USED = N_BANDS * 3                   # 39 (dropping last 2 wavelength values)
+PRINTER_LIGHTS_ARRAY = np.asarray(PRINTER_LIGHTS, dtype=np.float32)  # [41, 3]
+PRINTER_LIGHTS_27 = PRINTER_LIGHTS_ARRAY[:N_WAVEL_USED].reshape(N_BANDS, 3, 3).sum(axis=1)
 
 # ---------------------------------------------------------------------------
 # Stock selection — color only (no BW)
@@ -89,7 +91,7 @@ print(f"Negatives: {len(COLOR_NEGATIVES)}, Prints: {len(COLOR_PRINTS)}")
 # Constants
 # ---------------------------------------------------------------------------
 MAGIC = b"SPFILM\0\0"
-VERSION = 3
+VERSION = 4
 MAX_NAME = 64
 CURVE_SAMPLES = 512
 
@@ -117,9 +119,9 @@ def build_negative_data(film_data):
     d_min = film.d_min.astype(np.float32)
 
     spec_dens_full = film.get_spectral_density(film.color_masking).astype(np.float32)
-    spec_dens_27 = spec_dens_full.reshape(N_BANDS, 3, 3).mean(axis=1).astype(np.float32)
+    spec_dens_27 = spec_dens_full[:N_WAVEL_USED].reshape(N_BANDS, 3, 3).mean(axis=1).astype(np.float32)
     d_min_sd_full = film.d_min_sd.astype(np.float32)
-    d_min_sd_27 = d_min_sd_full.reshape(N_BANDS, 3).mean(axis=1).astype(np.float32)
+    d_min_sd_27 = d_min_sd_full[:N_WAVEL_USED].reshape(N_BANDS, 3).mean(axis=1).astype(np.float32)
     d_ref_sd_full = film.d_ref_sd.astype(np.float32) if film.d_ref_sd is not None else np.zeros(N_WAVEL, np.float32)
     sensitivity_full = film.sensitivity.astype(np.float32)
     color_masking = np.float32(film.color_masking if film.color_masking is not None else 0.0)
@@ -158,12 +160,12 @@ def build_print_data(film_data):
     H_ref = film.H_ref.astype(np.float32) if film.H_ref is not None else np.ones(3, np.float32)
 
     spec_dens_full = film.get_spectral_density().astype(np.float32)
-    spec_dens_27 = spec_dens_full.reshape(N_BANDS, 3, 3).mean(axis=1).astype(np.float32)
+    spec_dens_27 = spec_dens_full[:N_WAVEL_USED].reshape(N_BANDS, 3, 3).mean(axis=1).astype(np.float32)
 
     proj_light, xyz_cmfs = film.compute_projection_light(projector_kelvin=6500, white_comp=False)
     d_min_sd_full = film.d_min_sd.astype(np.float32)
     output_mat_full = (xyz_cmfs.T * proj_light * 10**-d_min_sd_full).T.astype(np.float32)
-    proj_output_mat_27 = output_mat_full.reshape(N_BANDS, 3, 3).sum(axis=1).astype(np.float32)
+    proj_output_mat_27 = output_mat_full[:N_WAVEL_USED].reshape(N_BANDS, 3, 3).sum(axis=1).astype(np.float32)
     sensitivity_full = film.sensitivity.astype(np.float32)
 
     buf = bytearray()

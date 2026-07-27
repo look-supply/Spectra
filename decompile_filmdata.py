@@ -11,7 +11,7 @@ Recreate .bin with:
 
 import json, os, struct, sys
 
-SF_N_WAVEL = 81; SF_N_BANDS = 27; SF_LUT3D_SIZE = 33
+SF_N_WAVEL = 41; SF_N_BANDS = 13; SF_LUT3D_SIZE = 33
 SF_CURVE_N = 512; SF_NAME_LEN = 64
 SF_LUT_FLOATS = SF_LUT3D_SIZE ** 3 * 3
 
