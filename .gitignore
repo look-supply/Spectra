@@ -5,6 +5,9 @@
 # Build
 build/
 
+# Build artifact: spectral film stock data (regenerated from transparent source)
+Resources/spectral_film_stocks.bin
+
 # Python
 __pycache__/
 *.pyc

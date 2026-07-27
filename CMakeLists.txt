@@ -144,13 +144,17 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/presets")
     )
 endif()
 
-# Copy Spectral Film stock database into bundle
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Resources/spectral_film_stocks.bin")
+# Pack spectral film stock database from transparent source data
+set(SF_STOCKS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Resources/spectral_film_data/stocks")
+set(SF_LUTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Resources/spectral_film_data/luts")
+if(EXISTS "${SF_STOCKS_DIR}" AND EXISTS "${SF_LUTS_DIR}")
     add_custom_command(TARGET LofiFxFilm POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-            "${CMAKE_CURRENT_SOURCE_DIR}/Resources/spectral_film_stocks.bin"
+        COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/pack_filmdata.py"
+            "${SF_STOCKS_DIR}"
+            "${SF_LUTS_DIR}"
             "${BUNDLE_RES_DIR}/spectral_film_stocks.bin"
-        COMMENT "Copying spectral_film_stocks.bin into bundle"
+        COMMENT "Packing spectral film stock data into bundle"
     )
 endif()
 

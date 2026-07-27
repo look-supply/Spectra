@@ -72,17 +72,19 @@ def main():
         print("\n=== Packing LUTs ===")
         run([sys.executable, os.path.join(SCRIPT_DIR, "pack_luts.py"), luts_dir, pak_path])
 
-    stocks_src = os.path.join(SCRIPT_DIR, "Resources", "spectral_film_stocks.bin")
-    stocks_dst = os.path.join(bundle_res_dir, "spectral_film_stocks.bin")
-    if os.path.exists(stocks_src):
+    stocks_dir = os.path.join(SCRIPT_DIR, "Resources", "spectral_film_data", "stocks")
+    luts_dir = os.path.join(SCRIPT_DIR, "Resources", "spectral_film_data", "luts")
+    if os.path.isdir(stocks_dir) and os.path.isdir(luts_dir):
         os.makedirs(bundle_res_dir, exist_ok=True)
-        print("\n=== Copying spectral_film_stocks.bin into bundle ===")
-        shutil.copy2(stocks_src, stocks_dst)
-    elif os.path.exists(stocks_dst):
-        # No source bin on this branch -- nuke any stale copy from a prior build
-        # so we never ship the wrong colour data.
-        print("\n=== Removing stale spectral_film_stocks.bin from bundle ===")
-        os.remove(stocks_dst)
+        stocks_dst = os.path.join(bundle_res_dir, "spectral_film_stocks.bin")
+        pack_script = os.path.join(SCRIPT_DIR, "pack_filmdata.py")
+        print("\n=== Packing spectral film stock data into bundle ===")
+        run([sys.executable, pack_script, stocks_dir, luts_dir, stocks_dst])
+    else:
+        stocks_dst = os.path.join(bundle_res_dir, "spectral_film_stocks.bin")
+        if os.path.exists(stocks_dst):
+            print("\n=== Removing stale spectral_film_stocks.bin from bundle ===")
+            os.remove(stocks_dst)
 
     # Ad-hoc sign (macOS only)
     adhoc_sign(BUNDLE_SRC)
