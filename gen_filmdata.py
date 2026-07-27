@@ -11,8 +11,8 @@ Usage:
 import sys, os, struct, numpy as np
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-# Use the submodule's spectral_film_lut (10nm steps, 41 wavelengths)
-sys.path.insert(0, os.path.join(SCRIPT_DIR, "vendor"))
+# Use the git submodule (10nm steps, 41 wavelengths, upstream-aligned)
+sys.path.insert(0, os.path.join(SCRIPT_DIR, "vendor", "spectral_film_lut", "src"))
 
 import colour
 from spectral_film_lut.film_spectral import FilmSpectral

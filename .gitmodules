@@ -1,0 +1,3 @@
+[submodule "vendor/spectral_film_lut"]
+	path = vendor/spectral_film_lut
+	url = git@github.com:lofi-fx/spectral_film_lut.git
