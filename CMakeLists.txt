@@ -121,7 +121,12 @@ add_custom_command(TARGET LofiFxFilm POST_BUILD
 )
 
 # Pack all LUTs into an obfuscated binary blob
+# Prefer the system Python that has numpy/scipy/colour-science installed
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+if(APPLE AND Python3_EXECUTABLE MATCHES "python3\.1[3-9]")
+    # Homebrew Python 3.13+ lacks build deps — use system Python instead
+    set(Python3_EXECUTABLE "/usr/bin/python3" CACHE STRING "" FORCE)
+endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/LUTs")
     add_custom_command(TARGET LofiFxFilm POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E rm -rf "${BUNDLE_RES_DIR}/LUTs"
@@ -144,17 +149,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/presets")
     )
 endif()
 
-# Pack spectral film stock database from transparent source data
-set(SF_STOCKS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Resources/spectral_film_data/stocks")
-set(SF_LUTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Resources/spectral_film_data/luts")
-if(EXISTS "${SF_STOCKS_DIR}" AND EXISTS "${SF_LUTS_DIR}")
+# Generate spectral film stock data from vendored spectral_film_lut source
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/spectral_film_lut")
     add_custom_command(TARGET LofiFxFilm POST_BUILD
         COMMAND ${Python3_EXECUTABLE}
-            "${CMAKE_CURRENT_SOURCE_DIR}/pack_filmdata.py"
-            "${SF_STOCKS_DIR}"
-            "${SF_LUTS_DIR}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/gen_filmdata.py"
+        COMMAND ${CMAKE_COMMAND} -E copy
+            "${CMAKE_CURRENT_SOURCE_DIR}/Resources/spectral_film_stocks.bin"
             "${BUNDLE_RES_DIR}/spectral_film_stocks.bin"
-        COMMENT "Packing spectral film stock data into bundle"
+        COMMENT "Generating spectral film data from vendored source"
     )
 endif()
 
