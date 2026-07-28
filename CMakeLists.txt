@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(LofiFxFilm LANGUAGES C CXX)
+project(LofiFxSpectra LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -64,15 +64,15 @@ endif()
 # ============================================================
 # Build the .ofx shared library
 # ============================================================
-add_library(LofiFxFilm MODULE ${PLUGIN_SOURCES})
+add_library(LofiFxSpectra MODULE ${PLUGIN_SOURCES})
 
-target_include_directories(LofiFxFilm PRIVATE
+target_include_directories(LofiFxSpectra PRIVATE
     ${OFX_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
 
-set_target_properties(LofiFxFilm PROPERTIES
+set_target_properties(LofiFxSpectra PROPERTIES
     PREFIX ""
     SUFFIX ".ofx"
     # Ensure exported symbols are visible
@@ -82,7 +82,7 @@ set_target_properties(LofiFxFilm PROPERTIES
 
 if(APPLE)
     # Link Metal and Foundation frameworks
-    target_link_libraries(LofiFxFilm
+    target_link_libraries(LofiFxSpectra
         "-framework Metal"
         "-framework Foundation"
     )
@@ -97,7 +97,7 @@ endif()
 # ============================================================
 # Post-build: create OFX bundle structure
 # ============================================================
-set(BUNDLE_DIR "${CMAKE_BINARY_DIR}/LofiFxFilm.ofx.bundle")
+set(BUNDLE_DIR "${CMAKE_BINARY_DIR}/LofiFxSpectra.ofx.bundle")
 
 if(APPLE)
     set(BUNDLE_BIN_DIR "${BUNDLE_DIR}/Contents/MacOS")
@@ -107,17 +107,17 @@ endif()
 set(BUNDLE_RES_DIR "${BUNDLE_DIR}/Contents/Resources")
 set(BUNDLE_PRESET_DIR "${BUNDLE_DIR}/Contents/Resources/Presets")
 
-add_custom_command(TARGET LofiFxFilm POST_BUILD
+add_custom_command(TARGET LofiFxSpectra POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "${BUNDLE_BIN_DIR}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${BUNDLE_RES_DIR}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${BUNDLE_PRESET_DIR}"
     COMMAND ${CMAKE_COMMAND} -E copy
-        "$<TARGET_FILE:LofiFxFilm>"
-        "${BUNDLE_BIN_DIR}/LofiFxFilm.ofx"
+        "$<TARGET_FILE:LofiFxSpectra>"
+        "${BUNDLE_BIN_DIR}/LofiFxSpectra.ofx"
     COMMAND ${CMAKE_COMMAND} -E copy
         "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist"
         "${BUNDLE_DIR}/Contents/Info.plist"
-    COMMENT "Assembling LofiFxFilm.ofx.bundle"
+    COMMENT "Assembling LofiFxSpectra.ofx.bundle"
 )
 
 # Pack all LUTs into an obfuscated binary blob
@@ -128,7 +128,7 @@ if(APPLE AND Python3_EXECUTABLE MATCHES "python3\.1[3-9]")
     set(Python3_EXECUTABLE "/usr/bin/python3" CACHE STRING "" FORCE)
 endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/LUTs")
-    add_custom_command(TARGET LofiFxFilm POST_BUILD
+    add_custom_command(TARGET LofiFxSpectra POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E rm -rf "${BUNDLE_RES_DIR}/LUTs"
         COMMAND ${Python3_EXECUTABLE}
             "${CMAKE_CURRENT_SOURCE_DIR}/pack_luts.py"
@@ -140,7 +140,7 @@ endif()
 
 # Copy preset files into bundle — clean first so stale files are removed
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/presets")
-    add_custom_command(TARGET LofiFxFilm POST_BUILD
+    add_custom_command(TARGET LofiFxSpectra POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E rm -rf "${BUNDLE_PRESET_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_CURRENT_SOURCE_DIR}/presets"
@@ -151,7 +151,7 @@ endif()
 
 # Generate spectral film stock data from vendored spectral_film_lut source
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/spectral_film_lut")
-    add_custom_command(TARGET LofiFxFilm POST_BUILD
+    add_custom_command(TARGET LofiFxSpectra POST_BUILD
         COMMAND ${Python3_EXECUTABLE}
             "${CMAKE_CURRENT_SOURCE_DIR}/gen_filmdata.py"
         COMMAND ${CMAKE_COMMAND} -E copy
@@ -181,11 +181,11 @@ install(
 # ============================================================
 if(APPLE)
     add_custom_target(install_local
-        COMMAND ${CMAKE_COMMAND} -E rm -rf "/Library/OFX/Plugins/LofiFxFilm.ofx.bundle"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "/Library/OFX/Plugins/LofiFxSpectra.ofx.bundle"
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${BUNDLE_DIR}"
-            "/Library/OFX/Plugins/LofiFxFilm.ofx.bundle"
-        DEPENDS LofiFxFilm
+            "/Library/OFX/Plugins/LofiFxSpectra.ofx.bundle"
+        DEPENDS LofiFxSpectra
         COMMENT "Installing to /Library/OFX/Plugins/ (clean copy)"
     )
 endif()

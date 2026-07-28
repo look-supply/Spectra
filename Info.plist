@@ -6,13 +6,13 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>English</string>
     <key>CFBundleExecutable</key>
-    <string>LofiFxFilm.ofx</string>
+    <string>LofiFxSpectra.ofx</string>
     <key>CFBundleIdentifier</key>
-    <string>com.lofifxfilm.grain</string>
+    <string>com.lofixfx.spectra</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>LoFi FX Film</string>
+    <string>LoFi FX Spectra</string>
     <key>CFBundlePackageType</key>
     <string>BNDL</string>
     <key>CFBundleShortVersionString</key>

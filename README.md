@@ -21,7 +21,7 @@ cmake --build build -j$(sysctl -n hw.ncpu)
 
 Requires: CMake 3.20+, macOS 11+ (Metal GPU), Xcode Command Line Tools. Internet connection on first build (fetches OpenFX SDK headers).
 
-Output: `build/LofiFxFilm.ofx.bundle`
+Output: `build/LofiFxSpectra.ofx.bundle`
 
 ## Install
 
@@ -29,7 +29,7 @@ Output: `build/LofiFxFilm.ofx.bundle`
 sudo cmake --build build --target install_local
 ```
 
-Or copy `build/LofiFxFilm.ofx.bundle` to `/Library/OFX/Plugins/`. Restart Resolve — the plugin appears under **LoFi FX Film** in the OFX effects list.
+Or copy `build/LofiFxSpectra.ofx.bundle` to `/Library/OFX/Plugins/`. Restart Resolve — the plugin appears under **LoFi FX Spectra** in the OFX effects list.
 
 ## Download
 
@@ -37,15 +37,15 @@ Or copy `build/LofiFxFilm.ofx.bundle` to `/Library/OFX/Plugins/`. Restart Resolv
 
 The plugin is unsigned, so macOS will block it the normal way. To install:
 
-1. **Extract the zip** — double-click the downloaded file. You'll see `LofiFxFilm.ofx.bundle`.
-2. **Move it into place** — in Finder, press `Cmd+Shift+G`, type `/Library/OFX/Plugins/`, and hit Go. Drag `LofiFxFilm.ofx.bundle` into that folder.
-3. **Bypass Gatekeeper** — open **System Settings > Privacy & Security**. Scroll down. Next to *"LofiFxFilm was blocked from loading"* click **Allow Anyway**.
+1. **Extract the zip** — double-click the downloaded file. You'll see `LofiFxSpectra.ofx.bundle`.
+2. **Move it into place** — in Finder, press `Cmd+Shift+G`, type `/Library/OFX/Plugins/`, and hit Go. Drag `LofiFxSpectra.ofx.bundle` into that folder.
+3. **Bypass Gatekeeper** — open **System Settings > Privacy & Security**. Scroll down. Next to *"LofiFxSpectra was blocked from loading"* click **Allow Anyway**.
 4. If you don't see the message, open **Terminal** (from Applications/Utilities), paste this, and press Enter:
    ```
-   sudo xattr -rd com.apple.quarantine /Library/OFX/Plugins/LofiFxFilm.ofx.bundle
+   sudo xattr -rd com.apple.quarantine /Library/OFX/Plugins/LofiFxSpectra.ofx.bundle
    ```
    You'll be asked for your password. Type it (nothing will show as you type) and press Enter.
-5. Restart DaVinci Resolve. The plugin appears under **LoFi FX Film** in the OFX effects list.
+5. Restart DaVinci Resolve. The plugin appears under **LoFi FX Spectra** in the OFX effects list.
 
 ## References
 

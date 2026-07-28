@@ -2473,7 +2473,7 @@ static OfxStatus actionIsIdentity(OfxImageEffectHandle effect,
 
     if (timelineDiagEnabled()) {
         std::fprintf(stderr,
-                     "[LofiFxFilm] IsIdentity t=%.3f grain=%d blurEnable=%d opacity=%.6f blur=%.6f lut=%d hal=%d diff=%d split=%d print=%d inXform=%d outXform=%d\n",
+                     "[LoFiFxSpectra] IsIdentity t=%.3f grain=%d blurEnable=%d opacity=%.6f blur=%.6f lut=%d hal=%d diff=%d split=%d print=%d inXform=%d outXform=%d\n",
                      time, grainOn ? 1 : 0, filmBlurOn ? 1 : 0, opacity,
                      filmResolveAmount, anyLutActive ? 1 : 0, halOn ? 1 : 0,
                      diffusionOn ? 1 : 0, splitOn ? 1 : 0, printOn ? 1 : 0,
@@ -2689,7 +2689,7 @@ static OfxStatus actionRender(OfxImageEffectHandle effect,
 
     if (timelineDiagEnabled()) {
         std::fprintf(stderr,
-                     "[LofiFxFilm] Render t=%.3f scale=%.4f debug=%d srcImg=%p dstImg=%p srcData=%p dstData=%p srcRB=%d dstRB=%d srcBounds=(%d,%d)-(%d,%d) dstBounds=(%d,%d)-(%d,%d) grain=%d strength=%.6f opacity=%.6f blurEnable=%d blur=%.6f link=%.6f\n",
+                     "[LoFiFxSpectra] Render t=%.3f scale=%.4f debug=%d srcImg=%p dstImg=%p srcData=%p dstData=%p srcRB=%d dstRB=%d srcBounds=(%d,%d)-(%d,%d) dstBounds=(%d,%d)-(%d,%d) grain=%d strength=%.6f opacity=%.6f blurEnable=%d blur=%.6f link=%.6f\n",
                      time, gp.renderScale, gp.debugMode, (void*)srcImg, (void*)dstImg,
                      srcPtr, dstPtr, srcRowBytes, dstRowBytes,
                      srcBounds.x1, srcBounds.y1, srcBounds.x2, srcBounds.y2,

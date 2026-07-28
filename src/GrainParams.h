@@ -264,8 +264,8 @@ static_assert(sizeof(GrainParams) == 376, "GrainParams size mismatch — Metal/C
 // Legacy: kept for backward-compat loading but hidden in UI
 #define PARAM_SF_LOOK_INTENSITY "sf_look_intensity"
 
-#define PLUGIN_ID             "com.lofifxfilm.grain"
-#define PLUGIN_LABEL          "LoFi FX Film"
+#define PLUGIN_ID             "com.lofixfx.spectra"
+#define PLUGIN_LABEL          "LoFi FX Spectra"
 #define PLUGIN_GROUP          "LoFi FX"
 #define PLUGIN_VERSION_MAJOR  1
 #define PLUGIN_VERSION_MINOR  2
