@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """Generate spectral film stock data from the vendored spectral_film_lut source.
 
-Replicates the exact process from the original gen_filmdata.py in
-~/Documents/Archive/LoFi-FX-plugins/spectral-film-ofx/
+Writes individual JSON stock files and float32 3D LUTs to
+  Resources/spectral_film_data/stocks/
+  Resources/spectral_film_data/luts/
+
+The data is the transparent source of truth — commit these files so repo
+viewers can inspect exactly what film data is included.  At build time
+pack_filmdata.py assembles them into the binary format the C++ loader
+expects.
 
 Usage:
   python3 gen_filmdata.py
 """
 
-import sys, os, struct, numpy as np
+import sys, os, json, struct, numpy as np
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-# Use the git submodule (10nm steps, 41 wavelengths, upstream-aligned)
 sys.path.insert(0, os.path.join(SCRIPT_DIR, "vendor", "spectral_film_lut", "src"))
 
 import colour
@@ -21,30 +26,12 @@ from spectral_film_lut.densiometry import PRINTER_LIGHTS
 from spectral_film_lut import NEGATIVE_FILM, PRINT_FILM
 from spectral_film_lut.utils import film_conversion
 
-# ---------------------------------------------------------------------------
-# DaVinci Wide Gamut <-> CIE XYZ (D65)
-# ---------------------------------------------------------------------------
-DWG_to_XYZ = np.array([
-    [0.7006607968,  0.1487679160,  0.1010412872],
-    [0.2741335367,  0.8735913831, -0.1477249199],
-    [-0.0989683375, -0.1378889305,  1.3256872680],
-], dtype=np.float32)
-XYZ_to_DWG = np.array([
-    [1.5165889100, -0.2814626195, -0.1469555778],
-    [-0.4649386618,  1.2514818105,  0.1748927191],
-    [0.0648602355,  0.1091581735,  0.7615459883],
-], dtype=np.float32)
-
-# SPECTRAL_SHAPE gives 41 wavelengths (380-780 at 10nm). We use 39 of 41 for banding.
-N_WAVEL = len(SPECTRAL_SHAPE.wavelengths)   # 41
-N_BANDS = (N_WAVEL // 3) * 3 // 3           # 13 (use first 39 of 41)
-N_WAVEL_USED = N_BANDS * 3                   # 39 (dropping last 2 wavelength values)
-PRINTER_LIGHTS_ARRAY = np.asarray(PRINTER_LIGHTS, dtype=np.float32)  # [41, 3]
+N_WAVEL = len(SPECTRAL_SHAPE.wavelengths)
+N_BANDS = (N_WAVEL // 3) * 3 // 3
+N_WAVEL_USED = N_BANDS * 3
+PRINTER_LIGHTS_ARRAY = np.asarray(PRINTER_LIGHTS, dtype=np.float32)
 PRINTER_LIGHTS_27 = PRINTER_LIGHTS_ARRAY[:N_WAVEL_USED].reshape(N_BANDS, 3, 3).sum(axis=1)
 
-# ---------------------------------------------------------------------------
-# Stock selection — color only (no BW)
-# ---------------------------------------------------------------------------
 COLOR_NEGATIVES = []; seen = set()
 for s in NEGATIVE_FILM:
     if s.density_measure != "bw" and s.name not in seen:
@@ -55,7 +42,6 @@ for s in PRINT_FILM:
     if s.density_measure == "status_a" and s.name not in seen:
         COLOR_PRINTS.append(s); seen.add(s.name)
 
-# Sort by the exact order the C++ UI expects
 NEG_ORDER = [
     "Agfa Vista 100", "Fuji C200", "Fuji Eterna 500", "Fuji Eterna 500 Vivid",
     "Fuji Natura 1600", "Fuji Pro 160C", "Fuji Pro 160S", "Fuji Pro 400H",
@@ -87,21 +73,12 @@ COLOR_PRINTS = [name_to_fd[n] for n in PRT_ORDER if n in name_to_fd]
 
 print(f"Negatives: {len(COLOR_NEGATIVES)}, Prints: {len(COLOR_PRINTS)}")
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-MAGIC = b"SPFILM\0\0"
-VERSION = 4
-MAX_NAME = 64
 CURVE_SAMPLES = 512
+SF_LUT3D_SIZE = 33
 
-def pack_name(name):
-    encoded = name.encode("utf-8")[:MAX_NAME-1]
-    return encoded + b"\0" * (MAX_NAME - len(encoded))
+def make_safe(name):
+    return ''.join(c for c in name.replace('/', '_').replace(' ', '_').replace('.', '_') if c.isalnum() or c == '_')
 
-# ---------------------------------------------------------------------------
-# Build negative stock record
-# ---------------------------------------------------------------------------
 def build_negative_data(film_data):
     print(f"  Neg: {film_data.name}")
     film = FilmSpectral(film_data)
@@ -126,25 +103,23 @@ def build_negative_data(film_data):
     sensitivity_full = film.sensitivity.astype(np.float32)
     color_masking = np.float32(film.color_masking if film.color_masking is not None else 0.0)
 
-    buf = bytearray()
-    buf += pack_name(film_data.name)
-    buf += lut_linear.flatten().tobytes()
-    buf += struct.pack("<ff", log_H_min, log_H_max)
-    buf += curves.flatten().tobytes()
-    buf += d_ref.tobytes()
-    buf += d_min.tobytes()
-    buf += spec_dens_27.flatten().tobytes()
-    buf += d_min_sd_27.tobytes()
-    buf += d_ref_sd_full.tobytes()
-    buf += d_min_sd_full.tobytes()
-    buf += spec_dens_full.flatten().tobytes()
-    buf += sensitivity_full.flatten().tobytes()
-    buf += struct.pack("<f", color_masking)
-    return bytes(buf)
+    return {
+        "name": film_data.name,
+        "inputLut": lut_linear.flatten().tolist(),
+        "logHMin": float(log_H_min),
+        "logHMax": float(log_H_max),
+        "curve": curves.flatten().tolist(),
+        "dRef": d_ref.tolist(),
+        "dMin": d_min.tolist(),
+        "specDens27": spec_dens_27.flatten().tolist(),
+        "dMinSd27": d_min_sd_27.tolist(),
+        "dRefSdFull": d_ref_sd_full.tolist(),
+        "dMinSdFull": d_min_sd_full.tolist(),
+        "specDensFull": spec_dens_full.flatten().tolist(),
+        "sensitivityFull": sensitivity_full.flatten().tolist(),
+        "colorMasking": float(color_masking),
+    }
 
-# ---------------------------------------------------------------------------
-# Build print stock record
-# ---------------------------------------------------------------------------
 def build_print_data(film_data):
     print(f"  Prt: {film_data.name}")
     film = FilmSpectral(film_data)
@@ -168,30 +143,28 @@ def build_print_data(film_data):
     proj_output_mat_27 = output_mat_full[:N_WAVEL_USED].reshape(N_BANDS, 3, 3).sum(axis=1).astype(np.float32)
     sensitivity_full = film.sensitivity.astype(np.float32)
 
-    buf = bytearray()
-    buf += pack_name(film_data.name)
-    buf += struct.pack("<ff", np.float32(log_H.min()), np.float32(log_H.max()))
-    buf += curves.flatten().tobytes()
-    buf += d_ref.tobytes()
-    buf += d_min.tobytes()
-    buf += spec_dens_27.flatten().tobytes()
-    buf += proj_output_mat_27.flatten().tobytes()
-    buf += H_ref.tobytes()
-    buf += d_min_sd_full.tobytes()
-    buf += sensitivity_full.flatten().tobytes()
-    buf += spec_dens_full.flatten().tobytes()
-    return bytes(buf)
+    return {
+        "name": film_data.name,
+        "logHMin": float(np.float32(log_H.min())),
+        "logHMax": float(np.float32(log_H.max())),
+        "curve": curves.flatten().tolist(),
+        "dRef": d_ref.tolist(),
+        "dMin": d_min.tolist(),
+        "specDens27": spec_dens_27.flatten().tolist(),
+        "projOutputMat27": proj_output_mat_27.flatten().tolist(),
+        "hRef": H_ref.tolist(),
+        "dMinSdFull": d_min_sd_full.tolist(),
+        "sensitivityFull": sensitivity_full.flatten().tolist(),
+        "specDensFull": spec_dens_full.flatten().tolist(),
+    }
 
-# ---------------------------------------------------------------------------
-# Build 3D LUT
-# ---------------------------------------------------------------------------
 def build_film_lut_3d(neg_fd, prt_fd):
     neg_film = FilmSpectral(neg_fd) if not hasattr(neg_fd, "input_transform") else neg_fd
     prt_film = None
     if prt_fd is not None:
         prt_film = FilmSpectral(prt_fd) if not hasattr(prt_fd, "input_transform") else prt_fd
 
-    lut = colour.LUT3D(size=33)
+    lut = colour.LUT3D(size=SF_LUT3D_SIZE)
     result = film_conversion(
         lut.table, neg_film, print_film=prt_film,
         input_colorspace="DaVinci Wide Gamut",
@@ -201,52 +174,52 @@ def build_film_lut_3d(neg_fd, prt_fd):
         exp_comp=-0.6,
         sat_adjust=1.35,
     )
-    # Transpose for GPU B-major storage: (R,G,B,ch) -> (B,G,R,ch)
     return np.clip(result, 0.0, 1.0).transpose(2, 1, 0, 3).astype(np.float32).flatten()
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
+class _JsonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.floating): return float(obj)
+        if isinstance(obj, np.integer): return int(obj)
+        return super().default(obj)
+
 def main():
-    output_dir = os.path.join(SCRIPT_DIR, "Resources")
-    os.makedirs(output_dir, exist_ok=True)
-    bin_path = os.path.join(output_dir, "spectral_film_stocks.bin")
+    data_dir = os.path.join(SCRIPT_DIR, "Resources", "spectral_film_data")
+    stocks_dir = os.path.join(data_dir, "stocks")
+    luts_dir = os.path.join(data_dir, "luts")
+    os.makedirs(stocks_dir, exist_ok=True)
+    os.makedirs(luts_dir, exist_ok=True)
 
-    print("\nBuilding negative stock records...")
-    neg_records = [(fd.name, build_negative_data(fd)) for fd in COLOR_NEGATIVES]
+    print("\nWriting negative stock JSON files...")
+    for i, fd in enumerate(COLOR_NEGATIVES):
+        rec = build_negative_data(fd)
+        safe = make_safe(fd.name)
+        with open(os.path.join(stocks_dir, f"neg_{i:02d}_{safe}.json"), 'w') as f:
+            json.dump(rec, f, indent=2, cls=_JsonEncoder)
 
-    print("\nBuilding print stock records...")
-    prt_records = [(fd.name, build_print_data(fd)) for fd in COLOR_PRINTS]
+    print("\nWriting print stock JSON files...")
+    for i, fd in enumerate(COLOR_PRINTS):
+        rec = build_print_data(fd)
+        safe = make_safe(fd.name)
+        with open(os.path.join(stocks_dir, f"prt_{i:02d}_{safe}.json"), 'w') as f:
+            json.dump(rec, f, indent=2, cls=_JsonEncoder)
 
-    n_luts = len(COLOR_NEGATIVES) * (1 + len(COLOR_PRINTS))
+    print("\nWriting 3D LUT float32 files...")
+    n_luts = 0
+    for ni, neg_fd in enumerate(COLOR_NEGATIVES):
+        print(f"  LUT: {neg_fd.name} + none")
+        lut = build_film_lut_3d(neg_fd, None)
+        lut.tofile(os.path.join(luts_dir, f"lut_{ni:02d}_-1.float32"))
+        n_luts += 1
+        for pi, prt_fd in enumerate(COLOR_PRINTS):
+            print(f"  LUT: {neg_fd.name} + {prt_fd.name}")
+            lut = build_film_lut_3d(neg_fd, prt_fd)
+            lut.tofile(os.path.join(luts_dir, f"lut_{ni:02d}_{pi:02d}.float32"))
+            n_luts += 1
 
-    with open(bin_path, "wb") as f:
-        f.write(MAGIC)
-        f.write(struct.pack("<I", VERSION))
-        f.write(struct.pack("<I", len(neg_records)))
-        f.write(struct.pack("<I", len(prt_records)))
-        for name, data in neg_records:
-            f.write(struct.pack("<I", len(data))); f.write(data)
-        for name, data in prt_records:
-            f.write(struct.pack("<I", len(data))); f.write(data)
-        f.write(struct.pack("<I", n_luts))
-
-        for ni, neg_fd in enumerate(COLOR_NEGATIVES):
-            print(f"  LUT: {neg_fd.name} + none")
-            lut = build_film_lut_3d(neg_fd, None)
-            f.write(struct.pack("<I", ni))
-            f.write(struct.pack("<i", -1))
-            f.write(lut.tobytes())
-            for pi, prt_fd in enumerate(COLOR_PRINTS):
-                print(f"  LUT: {neg_fd.name} + {prt_fd.name}")
-                lut = build_film_lut_3d(neg_fd, prt_fd)
-                f.write(struct.pack("<I", ni))
-                f.write(struct.pack("<I", pi))
-                f.write(lut.tobytes())
-
-    size_kb = os.path.getsize(bin_path) / 1024
-    print(f"\nWrote {bin_path}  ({size_kb:.1f} KB)")
-    print(f"  {len(neg_records)} neg, {len(prt_records)} prt, {n_luts} LUTs")
+    print(f"\nDone — {len(COLOR_NEGATIVES)} neg, {len(COLOR_PRINTS)} prt, {n_luts} LUTs")
+    print(f"  Stocks: {stocks_dir}/")
+    print(f"  LUTs:   {luts_dir}/")
+    print("Run pack_filmdata.py to assemble into spectral_film_stocks.bin for the build.")
 
 if __name__ == "__main__":
     main()

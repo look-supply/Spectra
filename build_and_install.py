@@ -72,16 +72,16 @@ def main():
         print("\n=== Packing LUTs ===")
         run([sys.executable, os.path.join(SCRIPT_DIR, "pack_luts.py"), luts_dir, pak_path])
 
-    vendor_dir = os.path.join(SCRIPT_DIR, "vendor", "spectral_film_lut")
-    if os.path.isdir(vendor_dir):
+    data_dir = os.path.join(SCRIPT_DIR, "Resources", "spectral_film_data")
+    if os.path.isdir(data_dir):
         os.makedirs(bundle_res_dir, exist_ok=True)
-        gen_script = os.path.join(SCRIPT_DIR, "gen_filmdata.py")
-        stocks_src = os.path.join(SCRIPT_DIR, "Resources", "spectral_film_stocks.bin")
+        pak_script = os.path.join(SCRIPT_DIR, "pack_filmdata.py")
         stocks_dst = os.path.join(bundle_res_dir, "spectral_film_stocks.bin")
-        print("\n=== Generating spectral film data from vendored source ===")
-        run([sys.executable, gen_script])
-        print("\n=== Copying spectral_film_stocks.bin into bundle ===")
-        shutil.copy2(stocks_src, stocks_dst)
+        print("\n=== Packing spectral film data into bundle ===")
+        run([sys.executable, pak_script,
+             os.path.join(data_dir, "stocks"),
+             os.path.join(data_dir, "luts"),
+             stocks_dst])
     else:
         stocks_dst = os.path.join(bundle_res_dir, "spectral_film_stocks.bin")
         if os.path.exists(stocks_dst):
