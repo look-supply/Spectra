@@ -2,36 +2,19 @@
 
 Spectra is an OFX plugin by LoFi FX for DaVinci Resolve that emulates motion-picture film stocks using manufacturer-published spectral sensitivity and density data from film stock technical white papers.
 
-The plugin runs in scene-linear space on your GPU, so the emulation scales correctly with exposure and reacts to color temperature changes like actual negative would. Pick a stock and it behaves like the film it's based on. More importantly, Spectra is built for speed and reliability in a working grade session. The controls are straightforward, the response is predictable, and the results hold up across shots, lighting conditions, and formats. It takes the guesswork out of film emulation so you can build consistent, bulletproof grades without fighting the tool.
+In addition to film emulation, Spectra gives you all the finishing touches you need: grain, halation, printer points, split toning, and diffusion. Everything works together to create a complete, cohesive film look from start to finish.
+
+Under the hood, Spectra is powered by the [Spectral Film LUT](https://github.com/JanLohse/spectral_film_lut) project by Jan Lohse. We've built on his foundation.
 
 ## Features
 
-- **Dual grain engines** — CW Stochastic (fast, clean) and SFG Organic (domain-warped, filmic) with format-specific grain profiles (8 mm through 65 mm)
-- **Spectral film data** — digitized datasheet measurements from a wide library of negative, print, and slide materials spanning still photography, motion picture, colour, black-and-white, Kodak and Fuji stocks
-- **Three-lobe optical diffusion** — a tight core, pearlescent body glow, and broad veiling halo driven by a scene-linear prepass with adaptive-resolution sampling
-- **Halation** — exponential-falloff red-layer scatter around high-contrast edges, computed in the linear domain
-- **LUT-based looks** — bundled .cube transforms for creative grading
+- **Film grain** — adds organic, format-specific grain texture that responds naturally to exposure and density, from 8 mm to 65 mm
+- **Halation** — reproduces the characteristic red-edge glow around bright areas you see on motion-picture film scans
+- **Split toning** — tint shadows and highlights independently for classic darkroom-style colour grading
+- **Optical diffusion** — creates soft, dreamy bloom around highlights with a natural falloff, like vintage diffusion filters
+- **Printer points** — dial in RGB colour timing just like a film printer, letting you warm up shadows or cool down highlights with precision
 
-## Build
-
-```
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(sysctl -n hw.ncpu)
-```
-
-Requires: CMake 3.20+, macOS 11+ (Metal GPU), Xcode Command Line Tools. Internet connection on first build (fetches OpenFX SDK headers).
-
-Output: `build/LofiFxSpectra.ofx.bundle`
-
-## Install
-
-```
-sudo cmake --build build --target install_local
-```
-
-Or copy `build/LofiFxSpectra.ofx.bundle` to `/Library/OFX/Plugins/`. Restart Resolve — the plugin appears under **LoFi FX Spectra** in the OFX effects list.
-
-## Download
+## Downloading and installing the package
 
 [Download v0.9 beta (macOS)](https://github.com/lofi-fx/Spectra/releases/tag/v0.9-beta)
 
@@ -46,6 +29,24 @@ The plugin is unsigned, so macOS will block it the normal way. To install:
    ```
    You'll be asked for your password. Type it (nothing will show as you type) and press Enter.
 5. Restart DaVinci Resolve. The plugin appears under **LoFi FX Spectra** in the OFX effects list.
+
+## Building from source
+```
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(sysctl -n hw.ncpu)
+```
+
+Requires: CMake 3.20+, macOS 11+ (Metal GPU), Xcode Command Line Tools. Internet connection on first build (fetches OpenFX SDK headers).
+
+Output: `build/LofiFxSpectra.ofx.bundle`
+
+## Install from source
+
+```
+sudo cmake --build build --target install_local
+```
+
+Or copy `build/LofiFxSpectra.ofx.bundle` to `/Library/OFX/Plugins/`. Restart Resolve — the plugin appears under **LoFi FX Spectra** in the OFX effects list.
 
 ## References
 
