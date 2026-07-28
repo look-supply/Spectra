@@ -149,15 +149,18 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/presets")
     )
 endif()
 
-# Generate spectral film stock data from vendored spectral_film_lut source
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vendor/spectral_film_lut")
+# Pack spectral film stock data from individual files into the .bin
+# that the C++ loader expects.  The individual JSON/float32 files are
+# the committed source of truth.
+set(SPECTRAL_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Resources/spectral_film_data")
+if(EXISTS "${SPECTRAL_DATA_DIR}")
     add_custom_command(TARGET LofiFxSpectra POST_BUILD
         COMMAND ${Python3_EXECUTABLE}
-            "${CMAKE_CURRENT_SOURCE_DIR}/gen_filmdata.py"
-        COMMAND ${CMAKE_COMMAND} -E copy
-            "${CMAKE_CURRENT_SOURCE_DIR}/Resources/spectral_film_stocks.bin"
+            "${CMAKE_CURRENT_SOURCE_DIR}/pack_filmdata.py"
+            "${SPECTRAL_DATA_DIR}/stocks"
+            "${SPECTRAL_DATA_DIR}/luts"
             "${BUNDLE_RES_DIR}/spectral_film_stocks.bin"
-        COMMENT "Generating spectral film data from vendored source"
+        COMMENT "Packing spectral film data into bundle"
     )
 endif()
 
