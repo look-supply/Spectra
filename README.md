@@ -35,6 +35,19 @@ Or copy `build/LofiFxFilm.ofx.bundle` to `/Library/OFX/Plugins/`. Restart Resolv
 
 [Download v0.9 beta (macOS)](https://github.com/lofi-fx/Spectra/releases/tag/v0.9-beta)
 
+The plugin is unsigned (no Apple Developer account), so macOS Gatekeeper will block it. After extracting the zip, run this in Terminal to remove the quarantine attribute before launching Resolve:
+
+```bash
+sudo xattr -rd com.apple.quarantine /Library/OFX/Plugins/LofiFxFilm.ofx.bundle
+```
+
+If you haven't installed yet, copy the bundle to the OFX plugins directory first:
+
+```bash
+sudo cp -R ~/Downloads/LofiFxFilm.ofx.bundle /Library/OFX/Plugins/
+sudo xattr -rd com.apple.quarantine /Library/OFX/Plugins/LofiFxFilm.ofx.bundle
+```
+
 ## References
 
 Spectra is built on concepts and data from the following open-source projects:
