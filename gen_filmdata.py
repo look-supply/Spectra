@@ -209,6 +209,7 @@ def build_film_lut_3d(neg_fd, prt_fd):
 # ---------------------------------------------------------------------------
 def main():
     output_dir = os.path.join(SCRIPT_DIR, "Resources")
+    os.makedirs(output_dir, exist_ok=True)
     bin_path = os.path.join(output_dir, "spectral_film_stocks.bin")
 
     print("\nBuilding negative stock records...")
