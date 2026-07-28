@@ -31,11 +31,15 @@ sudo cmake --build build --target install_local
 
 Or copy `build/LofiFxFilm.ofx.bundle` to `/Library/OFX/Plugins/`. Restart Resolve — the plugin appears under **LoFi FX Film** in the OFX effects list.
 
+## Download
+
+[Download v0.9 beta (macOS)](https://github.com/lofi-fx/Spectra/releases/tag/v0.9-beta)
+
 ## References
 
 Spectra is built on concepts and data from the following open-source projects:
 
-- **[Spectral Film LUT](https://github.com/JanLohse/spectral_film_lut)** (Jan Lohse, MIT) — digitized film stock datasheet measurements and the spectral film pipeline that inspired this plugin's colour science. Spectra uses the `spectral_film_stocks.bin` database directly.
+- **[Spectral Film LUT](https://github.com/JanLohse/spectral_film_lut)** (Jan Lohse, MIT) — digitized film stock datasheet measurements and the spectral film pipeline that inspired this plugin's colour science.
 - **[Halation DCTL](https://github.com/hotgluebanjo/halation-dctl)** (hotgluebanjo) — informed the exponential-falloff halation approach implemented in Spectra's Metal compute kernels.
 
 Both projects were studied, rebuilt, and extended as GPU-accelerated OFX-native code rather than LUT-generation tools or DCTL scripts.
