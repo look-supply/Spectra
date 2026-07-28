@@ -1,4 +1,4 @@
-# LoFi FX Spectra
+# Spectra OFX
 
 Spectra is an OFX plugin by LoFi FX for DaVinci Resolve that emulates motion-picture film stocks using manufacturer-published spectral sensitivity and density data from film stock technical white papers.
 
