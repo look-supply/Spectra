@@ -1,5 +1,5 @@
 // ============================================================
-// Lofi FX Film — shared GPU kernel source (single source of truth).
+// Look Supply Film — shared GPU kernel source (single source of truth).
 //
 // THIS FILE IS THE SHARED MATH FOR ALL FILM SHADER PASSES.
 // It is written against a small abstraction-macro layer so the same
@@ -1740,14 +1740,23 @@ DEVFN void cwGrainKernel_body(
     // gamma curve about a linear mid-grey pivot (see block below).
     if (p.lutEnabled && p.lutSize > 0) {
         float3 looked = applyLut3D(lutData, p.lutSize, result);
-        // Bradford CAT: matrix is precomputed in C++ from LUT native WP to user target WP.
+        // Bradford CAT: matrix is precomputed in C++ from the user white point
+        // to the LUT's native D65 white, in DWG linear light.
         // Passed row-major; Metal float3x3 constructor takes columns, so we transpose.
         if (p.wpEnabled) {
             float3x3 cat = float3x3(
                 MAKE_FLOAT3(p.wpMat[0], p.wpMat[3], p.wpMat[6]),  // col 0
                 MAKE_FLOAT3(p.wpMat[1], p.wpMat[4], p.wpMat[7]),  // col 1
                 MAKE_FLOAT3(p.wpMat[2], p.wpMat[5], p.wpMat[8])); // col 2
-            looked = cat * looked;
+            float3 lin = MAKE_FLOAT3(
+                max(di_to_linear(looked.x), 0.0f),
+                max(di_to_linear(looked.y), 0.0f),
+                max(di_to_linear(looked.z), 0.0f));
+            lin = cat * lin;
+            lin = max(lin, MAKE_FLOAT3(0.0f, 0.0f, 0.0f));
+            looked = MAKE_FLOAT3(linear_to_di(lin.x),
+                                 linear_to_di(lin.y),
+                                 linear_to_di(lin.z));
         }
         // Blend the LUT result back. lutIntensity controls saturation/chroma contribution;
         // lutContrastAmt controls contrast curve/luma contribution (Film Emulation only).

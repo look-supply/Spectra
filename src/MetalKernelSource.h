@@ -2,7 +2,7 @@
 #define METAL_KERNEL_SOURCE_H
 
 // ============================================================
-// Lofi FX Film — Metal runtime shader source.
+// Look Supply Film — Metal runtime shader source.
 //
 // ALL Film shader math lives in FilmKernelCore.inc and is shared
 // with the (future) CUDA path. This file:

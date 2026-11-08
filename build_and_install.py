@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build LofiFxSpectra OFX plugin and install to DaVinci Resolve plugins directory."""
+"""Build LookSupplySpectra OFX plugin and install to DaVinci Resolve plugins directory."""
 
 import os
 import subprocess
@@ -8,7 +8,7 @@ import shutil
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BUILD_DIR = os.path.join(SCRIPT_DIR, "build")
-BUNDLE_NAME = "LofiFxSpectra.ofx.bundle"
+BUNDLE_NAME = "LookSupplySpectra.ofx.bundle"
 BUNDLE_SRC = os.path.join(BUILD_DIR, BUNDLE_NAME)
 INSTALL_DIR = "/Library/OFX/Plugins"
 BUNDLE_DST = os.path.join(INSTALL_DIR, BUNDLE_NAME)
@@ -96,6 +96,7 @@ def main():
     if os.path.exists(BUNDLE_DST):
         run(["sudo", "rm", "-rf", BUNDLE_DST])
     run(["sudo", "cp", "-R", BUNDLE_SRC, BUNDLE_DST])
+
 
     # Strip quarantine so macOS doesn't block the plugin on other machines
     strip_quarantine(BUNDLE_DST)

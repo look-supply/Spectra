@@ -69,7 +69,7 @@ def generate_preset(cube_rel, meta_title, wp_index):
     esc     = title.replace('"', "'")
 
     return f"""# ============================================================
-# Lo Fi FX Film — Look Preset: {title}
+# Look Supply Film — Look Preset: {title}
 #
 # This preset carries an embedded copy of the .cube file so it
 # loads the LUT from the companion file instead of resources.pak.

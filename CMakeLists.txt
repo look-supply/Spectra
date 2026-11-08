@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(LofiFxSpectra LANGUAGES C CXX)
+project(LookSupplySpectra LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -52,7 +52,7 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
 # Sources
 # ============================================================
 set(PLUGIN_SOURCES
-    src/LowFiFxPlugin.cpp
+    src/LookSupplySpectraPlugin.cpp
     src/CudaKernels.cpp
     src/PresetParser.cpp
 )
@@ -64,15 +64,15 @@ endif()
 # ============================================================
 # Build the .ofx shared library
 # ============================================================
-add_library(LofiFxSpectra MODULE ${PLUGIN_SOURCES})
+add_library(LookSupplySpectra MODULE ${PLUGIN_SOURCES})
 
-target_include_directories(LofiFxSpectra PRIVATE
+target_include_directories(LookSupplySpectra PRIVATE
     ${OFX_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
 
-set_target_properties(LofiFxSpectra PROPERTIES
+set_target_properties(LookSupplySpectra PROPERTIES
     PREFIX ""
     SUFFIX ".ofx"
     # Ensure exported symbols are visible
@@ -82,7 +82,7 @@ set_target_properties(LofiFxSpectra PROPERTIES
 
 if(APPLE)
     # Link Metal and Foundation frameworks
-    target_link_libraries(LofiFxSpectra
+    target_link_libraries(LookSupplySpectra
         "-framework Metal"
         "-framework Foundation"
     )
@@ -97,7 +97,7 @@ endif()
 # ============================================================
 # Post-build: create OFX bundle structure
 # ============================================================
-set(BUNDLE_DIR "${CMAKE_BINARY_DIR}/LofiFxSpectra.ofx.bundle")
+set(BUNDLE_DIR "${CMAKE_BINARY_DIR}/LookSupplySpectra.ofx.bundle")
 
 if(APPLE)
     set(BUNDLE_BIN_DIR "${BUNDLE_DIR}/Contents/MacOS")
@@ -107,17 +107,17 @@ endif()
 set(BUNDLE_RES_DIR "${BUNDLE_DIR}/Contents/Resources")
 set(BUNDLE_PRESET_DIR "${BUNDLE_DIR}/Contents/Resources/Presets")
 
-add_custom_command(TARGET LofiFxSpectra POST_BUILD
+add_custom_command(TARGET LookSupplySpectra POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "${BUNDLE_BIN_DIR}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${BUNDLE_RES_DIR}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${BUNDLE_PRESET_DIR}"
     COMMAND ${CMAKE_COMMAND} -E copy
-        "$<TARGET_FILE:LofiFxSpectra>"
-        "${BUNDLE_BIN_DIR}/LofiFxSpectra.ofx"
+        "$<TARGET_FILE:LookSupplySpectra>"
+        "${BUNDLE_BIN_DIR}/LookSupplySpectra.ofx"
     COMMAND ${CMAKE_COMMAND} -E copy
         "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist"
         "${BUNDLE_DIR}/Contents/Info.plist"
-    COMMENT "Assembling LofiFxSpectra.ofx.bundle"
+    COMMENT "Assembling LookSupplySpectra.ofx.bundle"
 )
 
 # Pack all LUTs into an obfuscated binary blob
@@ -128,7 +128,7 @@ if(APPLE AND Python3_EXECUTABLE MATCHES "python3\.1[3-9]")
     set(Python3_EXECUTABLE "/usr/bin/python3" CACHE STRING "" FORCE)
 endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/LUTs")
-    add_custom_command(TARGET LofiFxSpectra POST_BUILD
+    add_custom_command(TARGET LookSupplySpectra POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E rm -rf "${BUNDLE_RES_DIR}/LUTs"
         COMMAND ${Python3_EXECUTABLE}
             "${CMAKE_CURRENT_SOURCE_DIR}/pack_luts.py"
@@ -140,7 +140,7 @@ endif()
 
 # Copy preset files into bundle — clean first so stale files are removed
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/presets")
-    add_custom_command(TARGET LofiFxSpectra POST_BUILD
+    add_custom_command(TARGET LookSupplySpectra POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E rm -rf "${BUNDLE_PRESET_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_CURRENT_SOURCE_DIR}/presets"
@@ -154,7 +154,7 @@ endif()
 # the committed source of truth.
 set(SPECTRAL_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Resources/spectral_film_data")
 if(EXISTS "${SPECTRAL_DATA_DIR}")
-    add_custom_command(TARGET LofiFxSpectra POST_BUILD
+    add_custom_command(TARGET LookSupplySpectra POST_BUILD
         COMMAND ${Python3_EXECUTABLE}
             "${CMAKE_CURRENT_SOURCE_DIR}/pack_filmdata.py"
             "${SPECTRAL_DATA_DIR}/stocks"
@@ -184,11 +184,12 @@ install(
 # ============================================================
 if(APPLE)
     add_custom_target(install_local
-        COMMAND ${CMAKE_COMMAND} -E rm -rf "/Library/OFX/Plugins/LofiFxSpectra.ofx.bundle"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "/Library/OFX/Plugins/LookSupplySpectra.ofx.bundle"
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${BUNDLE_DIR}"
-            "/Library/OFX/Plugins/LofiFxSpectra.ofx.bundle"
-        DEPENDS LofiFxSpectra
+            "/Library/OFX/Plugins/LookSupplySpectra.ofx.bundle"
+
+        DEPENDS LookSupplySpectra
         COMMENT "Installing to /Library/OFX/Plugins/ (clean copy)"
     )
 endif()

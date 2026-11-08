@@ -256,9 +256,9 @@ bool metalInit(void* cmdQueuePtr) {
         if (s_metalLibrary && s_cwPipeline) return true;
 
         id<MTLCommandQueue> queue = (__bridge id<MTLCommandQueue>)cmdQueuePtr;
-        if (!queue) { NSLog(@"LoFiFxSpectra: metalInit called with nil queue"); return false; }
+        if (!queue) { NSLog(@"LookSupplySpectra: metalInit called with nil queue"); return false; }
         id<MTLDevice> device = queue.device;
-        if (!device) { NSLog(@"LoFiFxSpectra: queue.device is nil"); return false; }
+        if (!device) { NSLog(@"LookSupplySpectra: queue.device is nil"); return false; }
 
         NSError* error = nil;
 
@@ -279,10 +279,10 @@ bool metalInit(void* cmdQueuePtr) {
                               options:opts
                               error:&error];
             if (!s_metalLibrary) {
-                NSLog(@"LoFiFxSpectra: Metal library compile failed: %@", error);
+                NSLog(@"LookSupplySpectra: Metal library compile failed: %@", error);
                 return false;
             }
-            NSLog(@"LoFiFxSpectra: Metal library compiled successfully");
+            NSLog(@"LookSupplySpectra: Metal library compiled successfully");
         }
 
         // CW pipeline
@@ -291,7 +291,7 @@ bool metalInit(void* cmdQueuePtr) {
             if (cwFunc)
                 s_cwPipeline = [device newComputePipelineStateWithFunction:cwFunc error:&error];
             if (!s_cwPipeline)
-                NSLog(@"LoFiFxSpectra: CW pipeline creation failed: %@", error);
+                NSLog(@"LookSupplySpectra: CW pipeline creation failed: %@", error);
         }
 
         // Linearize prepass pipeline
@@ -300,7 +300,7 @@ bool metalInit(void* cmdQueuePtr) {
             if (linFunc)
                 s_linearizePipeline = [device newComputePipelineStateWithFunction:linFunc error:&error];
             if (!s_linearizePipeline)
-                NSLog(@"LoFiFxSpectra: Linearize pipeline creation failed: %@", error);
+                NSLog(@"LookSupplySpectra: Linearize pipeline creation failed: %@", error);
         }
 
         // Half-resolution diffusion scatter prepass pipeline
@@ -309,7 +309,7 @@ bool metalInit(void* cmdQueuePtr) {
             if (diffusionFunc)
                 s_diffusionScatterPipeline = [device newComputePipelineStateWithFunction:diffusionFunc error:&error];
             if (!s_diffusionScatterPipeline)
-                NSLog(@"LoFiFxSpectra: Diffusion scatter pipeline creation failed: %@", error);
+                NSLog(@"LookSupplySpectra: Diffusion scatter pipeline creation failed: %@", error);
         }
 
         // Scatter texture smoothing pipelines (H and V separable Gaussian)
@@ -318,14 +318,14 @@ bool metalInit(void* cmdQueuePtr) {
             if (f)
                 s_diffusionBlurHPipeline = [device newComputePipelineStateWithFunction:f error:&error];
             if (!s_diffusionBlurHPipeline)
-                NSLog(@"LoFiFxSpectra: Diffusion blur H pipeline creation failed: %@", error);
+                NSLog(@"LookSupplySpectra: Diffusion blur H pipeline creation failed: %@", error);
         }
         if (!s_diffusionBlurVPipeline) {
             id<MTLFunction> f = [s_metalLibrary newFunctionWithName:@"cwDiffusionBlurVKernel"];
             if (f)
                 s_diffusionBlurVPipeline = [device newComputePipelineStateWithFunction:f error:&error];
             if (!s_diffusionBlurVPipeline)
-                NSLog(@"LoFiFxSpectra: Diffusion blur V pipeline creation failed: %@", error);
+                NSLog(@"LookSupplySpectra: Diffusion blur V pipeline creation failed: %@", error);
         }
 
         // Full-resolution halation prepass pipeline
@@ -334,7 +334,7 @@ bool metalInit(void* cmdQueuePtr) {
             if (halFunc)
                 s_halationPrepassPipeline = [device newComputePipelineStateWithFunction:halFunc error:&error];
             if (!s_halationPrepassPipeline)
-                NSLog(@"LoFiFxSpectra: Halation prepass pipeline creation failed: %@", error);
+                NSLog(@"LookSupplySpectra: Halation prepass pipeline creation failed: %@", error);
         }
 
         // Film blur separable prepass pipelines (H and V passes)
@@ -343,14 +343,14 @@ bool metalInit(void* cmdQueuePtr) {
             if (fbhFunc)
                 s_filmBlurHPipeline = [device newComputePipelineStateWithFunction:fbhFunc error:&error];
             if (!s_filmBlurHPipeline)
-                NSLog(@"LoFiFxSpectra: Film blur H pipeline creation failed: %@", error);
+                NSLog(@"LookSupplySpectra: Film blur H pipeline creation failed: %@", error);
         }
         if (!s_filmBlurVPipeline) {
             id<MTLFunction> fbvFunc = [s_metalLibrary newFunctionWithName:@"cwFilmBlurVKernel"];
             if (fbvFunc)
                 s_filmBlurVPipeline = [device newComputePipelineStateWithFunction:fbvFunc error:&error];
             if (!s_filmBlurVPipeline)
-                NSLog(@"LoFiFxSpectra: Film blur V pipeline creation failed: %@", error);
+                NSLog(@"LookSupplySpectra: Film blur V pipeline creation failed: %@", error);
         }
 
         // Halation blur separable prepass pipelines (H then V — O(radius) each)
@@ -359,14 +359,14 @@ bool metalInit(void* cmdQueuePtr) {
             if (hbhFunc)
                 s_halBlurHPipeline = [device newComputePipelineStateWithFunction:hbhFunc error:&error];
             if (!s_halBlurHPipeline)
-                NSLog(@"LoFiFxSpectra: Halation blur H pipeline creation failed: %@", error);
+                NSLog(@"LookSupplySpectra: Halation blur H pipeline creation failed: %@", error);
         }
         if (!s_halBlurVPipeline) {
             id<MTLFunction> hbvFunc = [s_metalLibrary newFunctionWithName:@"cwHalationBlurVKernel"];
             if (hbvFunc)
                 s_halBlurVPipeline = [device newComputePipelineStateWithFunction:hbvFunc error:&error];
             if (!s_halBlurVPipeline)
-                NSLog(@"LoFiFxSpectra: Halation blur V pipeline creation failed: %@", error);
+                NSLog(@"LookSupplySpectra: Halation blur V pipeline creation failed: %@", error);
         }
 
         return (s_cwPipeline != nil);
@@ -870,12 +870,12 @@ void* metalGetSelfHostedQueue(void) {
         if (s_selfQueue) return (__bridge void*)s_selfQueue;
         s_selfDevice = MTLCreateSystemDefaultDevice();
         if (!s_selfDevice) {
-            NSLog(@"LoFiFxSpectra: no Metal device found for self-hosted queue");
+            NSLog(@"LookSupplySpectra: no Metal device found for self-hosted queue");
             return nullptr;
         }
         s_selfQueue = [s_selfDevice newCommandQueue];
         if (!s_selfQueue) {
-            NSLog(@"LoFiFxSpectra: failed to create self-hosted command queue");
+            NSLog(@"LookSupplySpectra: failed to create self-hosted command queue");
             return nullptr;
         }
         return (__bridge void*)s_selfQueue;
@@ -896,18 +896,18 @@ bool metalDispatchGrainFromCpu(void* srcCpuPtr, void* dstCpuPtr,
                                const float* curveData) {
     @autoreleasepool {
         if (!srcCpuPtr || !dstCpuPtr) {
-            NSLog(@"LoFiFxSpectra: metalDispatchGrainFromCpu: null src/dst ptr");
+            NSLog(@"LookSupplySpectra: metalDispatchGrainFromCpu: null src/dst ptr");
             return false;
         }
 
         void* queuePtr = metalGetSelfHostedQueue();
         if (!queuePtr) {
-            NSLog(@"LoFiFxSpectra: metalDispatchGrainFromCpu: no self-hosted queue");
+            NSLog(@"LookSupplySpectra: metalDispatchGrainFromCpu: no self-hosted queue");
             return false;
         }
         bool initOk = metalInit(queuePtr);
         if (!initOk) {
-            NSLog(@"LoFiFxSpectra: metalDispatchGrainFromCpu: metalInit failed");
+            NSLog(@"LookSupplySpectra: metalDispatchGrainFromCpu: metalInit failed");
             return false;
         }
 
@@ -928,7 +928,7 @@ bool metalDispatchGrainFromCpu(void* srcCpuPtr, void* dstCpuPtr,
         id<MTLBuffer> dstBuf = [device newBufferWithLength:dstBytes
                                                    options:MTLResourceStorageModeShared];
         if (!srcBuf || !dstBuf) {
-            NSLog(@"LoFiFxSpectra: metalDispatchGrainFromCpu: src/dst buffer alloc failed srcBuf=%p dstBuf=%p",
+            NSLog(@"LookSupplySpectra: metalDispatchGrainFromCpu: src/dst buffer alloc failed srcBuf=%p dstBuf=%p",
                   (void*)srcBuf, (void*)dstBuf);
             return false;
         }
@@ -938,7 +938,11 @@ bool metalDispatchGrainFromCpu(void* srcCpuPtr, void* dstCpuPtr,
                       lutBufPtr, outputCstBufPtr, inputCstBufPtr,
                       params, curveData, /*waitForCompletion=*/true);
 
-        memcpy(dstCpuPtr, [dstBuf contents], dstBytes);
+        // Copy active pixels only; row padding belongs to the host.
+        for (int y = 0; y < params.height; ++y)
+            memcpy((char*)dstCpuPtr + size_t(y)*params.dstRowBytes,
+                   (char*)[dstBuf contents] + size_t(y)*params.dstRowBytes,
+                   size_t(params.width)*4*sizeof(float));
         return true;
     }
 }

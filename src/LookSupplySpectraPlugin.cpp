@@ -1,5 +1,5 @@
 // ============================================================
-// Lofi FX Film — OFX Plugin for DaVinci Resolve
+// Look Supply Film — OFX Plugin for DaVinci Resolve
 //
 // Film texture and finishing pipeline with optional post-grain 3D Look.
 //
@@ -252,14 +252,14 @@ static bool loadSfStockData(const std::string& bundlePath) {
     std::string path = bundlePath + "/Contents/Resources/spectral_film_stocks.bin";
     std::ifstream f(path, std::ios::binary);
     if (!f.is_open()) {
-        fprintf(stderr, "LoFiFxFilm: cannot open %s\n", path.c_str());
+        fprintf(stderr, "LookSupplySpectra: cannot open %s\n", path.c_str());
         return false;
     }
 
     char magic[8];
     f.read(magic, 8);
     if (memcmp(magic, "SPFILM\0\0", 8) != 0) {
-        fprintf(stderr, "LoFiFxFilm: bad magic in spectral_film_stocks.bin\n");
+        fprintf(stderr, "LookSupplySpectra: bad magic in spectral_film_stocks.bin\n");
         return false;
     }
 
@@ -268,7 +268,7 @@ static bool loadSfStockData(const std::string& bundlePath) {
     f.read(reinterpret_cast<char*>(&nNeg), 4);
     f.read(reinterpret_cast<char*>(&nPrt), 4);
     if (!f || version != 4 || nNeg > SF_MAX_STOCKS || nPrt > SF_MAX_STOCKS) {
-        fprintf(stderr, "LoFiFxFilm: invalid spectral stock header\n");
+        fprintf(stderr, "LookSupplySpectra: invalid spectral stock header\n");
         return false;
     }
 
@@ -312,7 +312,7 @@ static bool loadSfStockData(const std::string& bundlePath) {
         }
     }
 
-    fprintf(stderr, "LoFiFxFilm: loaded %u neg + %u print stocks + %zu spectral LUTs\n",
+    fprintf(stderr, "LookSupplySpectra: loaded %u neg + %u print stocks + %zu spectral LUTs\n",
             nNeg, nPrt, gSfFilmLuts.size());
     return true;
 }
@@ -321,7 +321,7 @@ static bool loadSfStockData(const std::string& bundlePath) {
 // Convert spectral film LUT (Rec.709 Gamma 2.4 output) to DWG/DI log output.
 // The raw LUT data from the .bin maps DI log [0..1]^3 → Rec.709 Gamma 2.4.
 // We convert each output triple to DWG/DI log so the result can be used
-// directly as the "Look LUT" in the existing LoFi Film GPU kernel.
+// directly as the "Look LUT" in the existing Look Supply GPU kernel.
 // Conversion mirrors step 6 in SpectralKernelCore.inc exactly.
 // ============================================================
 static void convertSfLutToDwgDi(const std::vector<float>& srcLut,
@@ -613,6 +613,10 @@ static OfxStatus actionDescribe(OfxImageEffectHandle effect) {
                              kOfxImageEffectPropCudaRenderSupported, 0, "true");
 #endif
 
+    // Include the pixel color transform in host-generated 3D LUTs.
+#ifdef __APPLE__
+    gPropHost->propSetString(effectProps, "OfxImageEffectPropNoSpatialAwareness", 0, "true");
+#endif
     // Frame varying (grain changes every frame)
     gPropHost->propSetInt(effectProps, kOfxImageEffectFrameVarying, 0, 1);
 
@@ -1466,28 +1470,41 @@ static bool bradfordCat(int srcWP, int dstWP, float out[9])
     return true;
 }
 
-static void kelvinToDIlluminantXYZ(double kelvin, double xyz[3])
+static void kelvinToXYZ(double kelvin, double xyz[3])
 {
-    double T = normalizeWpKelvin(kelvin);
-    double xD;
-    if (T <= 7000.0)
-        xD = -4.607e9/(T*T*T) + 2.9678e6/(T*T) + 0.09911e3/T + 0.244063;
-    else
-        xD = -2.0064e9/(T*T*T) + 1.9018e6/(T*T) + 0.24748e3/T + 0.237040;
+    const double T = normalizeWpKelvin(kelvin);
+    const double invT  = 1.0 / T;
+    const double invT2 = invT * invT;
+    const double invT3 = invT2 * invT;
 
-    double yD = -3.000*xD*xD + 2.870*xD - 0.275;
-    if (yD < 1e-6) yD = 1e-6;
+    double x, y;
+    if (T < 4000.0) {
+        // Planckian locus (Kang et al., 1667K–4000K)
+        x = -0.2661239e9 * invT3 - 0.2343589e6 * invT2 + 0.8776956e3 * invT + 0.179910;
+        y = -1.1063814 * x*x*x - 1.34811020 * x*x + 2.18555832 * x - 0.20219683;
+    } else if (T <= 7000.0) {
+        // CIE D-series, 4000K–7000K
+        x = -4.6070e9 * invT3 + 2.9678e6 * invT2 + 0.09911e3 * invT + 0.244063;
+        y = -3.000 * x*x + 2.870 * x - 0.275;
+    } else {
+        // CIE D-series, 7000K–25000K
+        x = -2.0064e9 * invT3 + 1.9018e6 * invT2 + 0.24748e3 * invT + 0.237040;
+        y = -3.000 * x*x + 2.870 * x - 0.275;
+    }
 
-    xyz[0] = xD / yD;
+    if (y < 1e-6) y = 1e-6;
+    xyz[0] = x / y;
     xyz[1] = 1.0;
-    xyz[2] = (1.0 - xD - yD) / yD;
+    xyz[2] = (1.0 - x - y) / y;
 }
 
-static bool bradfordCatKelvin(int srcWP, double targetKelvin, float out[9])
+// Adapt from the user-selected white point to the LUT's native D65 white.
+// Matches faux-raw's convention: increasing the Kelvin value warms the image.
+static bool bradfordCatKelvin(double sourceKelvin, int dstWP, float out[9])
 {
-    srcWP = normalizeWpChoice(srcWP);
-    targetKelvin = normalizeWpKelvin(targetKelvin);
-    if (std::fabs(targetKelvin - kWpChoiceKelvin[srcWP]) < 5.0) return false;
+    sourceKelvin = normalizeWpKelvin(sourceKelvin);
+    dstWP = normalizeWpChoice(dstWP);
+    if (std::fabs(sourceKelvin - kWpChoiceKelvin[dstWP]) < 5.0) return false;
 
     static const double MB[3][3] = {
         { 0.8951,  0.2664, -0.1614},
@@ -1509,23 +1526,27 @@ static bool bradfordCatKelvin(int srcWP, double targetKelvin, float out[9])
         {-0.4649386618,  1.2514818105,  0.1748927191},
         { 0.0648602355,  0.1091581735,  0.7615459883}
     };
-    static const double WP_SRC[6][3] = {
-        {0.96422, 1.00000, 0.82521},
-        {0.95682, 1.00000, 0.92149},
-        {0.95265, 1.00000, 1.00883},
-        {0.95047, 1.00000, 1.08883},
-        {0.94936, 1.00000, 1.16006},
-        {0.94972, 1.00000, 1.22638}
+
+    // Destination is a known illuminant (the LUT's native white point), so
+    // use its standard XYZ rather than the approximate CCT locus.
+    static const double WP_DST[6][3] = {
+        {0.96422, 1.00000, 0.82521},  // D50
+        {0.95682, 1.00000, 0.92149},  // D55
+        {0.95265, 1.00000, 1.00883},  // D60 (ACES)
+        {0.95047, 1.00000, 1.08883},  // D65
+        {0.94936, 1.00000, 1.16006},  // D70
+        {0.94972, 1.00000, 1.22638}   // D75
     };
 
-    double dstXYZ[3];
-    kelvinToDIlluminantXYZ(targetKelvin, dstXYZ);
+    double srcXYZ[3], dstXYZ[3];
+    kelvinToXYZ(sourceKelvin, srcXYZ);
+    for (int i = 0; i < 3; i++) dstXYZ[i] = WP_DST[dstWP][i];
 
     double rhoS[3], rhoD[3];
     for (int i = 0; i < 3; i++) {
         rhoS[i] = rhoD[i] = 0.0;
         for (int j = 0; j < 3; j++) {
-            rhoS[i] += MB[i][j] * WP_SRC[srcWP][j];
+            rhoS[i] += MB[i][j] * srcXYZ[j];
             rhoD[i] += MB[i][j] * dstXYZ[j];
         }
     }
@@ -2108,7 +2129,7 @@ static void saveCurrentPreset(OfxImageEffectHandle effect, double time) {
     if (!f.is_open()) return;
 
     f << "# ============================================================\n";
-    f << "# Lofi FX Film — User Preset: " << presetName << "\n";
+    f << "# Look Supply Film — User Preset: " << presetName << "\n";
     f << "# ============================================================\n\n";
     f << "name = " << presetName << "\n\n";
 
@@ -2473,7 +2494,7 @@ static OfxStatus actionIsIdentity(OfxImageEffectHandle effect,
 
     if (timelineDiagEnabled()) {
         std::fprintf(stderr,
-                     "[LoFiFxSpectra] IsIdentity t=%.3f grain=%d blurEnable=%d opacity=%.6f blur=%.6f lut=%d hal=%d diff=%d split=%d print=%d inXform=%d outXform=%d\n",
+                     "[LookSupplySpectra] IsIdentity t=%.3f grain=%d blurEnable=%d opacity=%.6f blur=%.6f lut=%d hal=%d diff=%d split=%d print=%d inXform=%d outXform=%d\n",
                      time, grainOn ? 1 : 0, filmBlurOn ? 1 : 0, opacity,
                      filmResolveAmount, anyLutActive ? 1 : 0, halOn ? 1 : 0,
                      diffusionOn ? 1 : 0, splitOn ? 1 : 0, printOn ? 1 : 0,
@@ -2530,6 +2551,10 @@ static OfxStatus actionRender(OfxImageEffectHandle effect,
     // ---- Parameter values ----
     OfxParamSetHandle ps;
     gEffectHost->getParamSet(effect, &ps);
+
+    char* noSpatial = nullptr;
+    gPropHost->propGetString(inArgs, "OfxImageEffectPropNoSpatialAwareness", 0, &noSpatial);
+    const bool lutOnly = noSpatial && !strcmp(noSpatial, "true");
 
     GrainParams gp;
     memset(&gp, 0, sizeof(gp));
@@ -2689,7 +2714,7 @@ static OfxStatus actionRender(OfxImageEffectHandle effect,
 
     if (timelineDiagEnabled()) {
         std::fprintf(stderr,
-                     "[LoFiFxSpectra] Render t=%.3f scale=%.4f debug=%d srcImg=%p dstImg=%p srcData=%p dstData=%p srcRB=%d dstRB=%d srcBounds=(%d,%d)-(%d,%d) dstBounds=(%d,%d)-(%d,%d) grain=%d strength=%.6f opacity=%.6f blurEnable=%d blur=%.6f link=%.6f\n",
+                     "[LookSupplySpectra] Render t=%.3f scale=%.4f debug=%d srcImg=%p dstImg=%p srcData=%p dstData=%p srcRB=%d dstRB=%d srcBounds=(%d,%d)-(%d,%d) dstBounds=(%d,%d)-(%d,%d) grain=%d strength=%.6f opacity=%.6f blurEnable=%d blur=%.6f link=%.6f\n",
                      time, gp.renderScale, gp.debugMode, (void*)srcImg, (void*)dstImg,
                      srcPtr, dstPtr, srcRowBytes, dstRowBytes,
                      srcBounds.x1, srcBounds.y1, srcBounds.x2, srcBounds.y2,
@@ -2828,8 +2853,10 @@ static OfxStatus actionRender(OfxImageEffectHandle effect,
                 gp.lutPushPull    = 0.0f;
 
                 if (sfLookEnabled) {
+                    // Adapt from the selected white point to the LUT's D65
+                    // native white. This matches faux-raw: higher K warms.
                     float wpMatrix[9];
-                    gp.wpEnabled = bradfordCatKelvin(3, sfWpKelvin, wpMatrix) ? 1 : 0;
+                    gp.wpEnabled = bradfordCatKelvin(sfWpKelvin, 3, wpMatrix) ? 1 : 0;
                     if (gp.wpEnabled)
                         for (int i = 0; i < 9; i++) gp.wpMat[i] = wpMatrix[i];
                 } else {
@@ -2944,6 +2971,8 @@ static OfxStatus actionRender(OfxImageEffectHandle effect,
     }
 
     // ---- Compute contrast curve samples (256 R + 256 G + 256 B) ----
+    if (lutOnly) makeLutCompatible(gp);
+
     // GPU kernel reads this buffer if gp.curveEnabled is set.
     bool curveOn = false; // getBool(ps, PARAM_CURVE_ENABLE); // hidden/disabled for now
     gp.curveEnabled = 0;
@@ -3040,10 +3069,15 @@ static OfxStatus actionRender(OfxImageEffectHandle effect,
                 float lr, lg, lb;
                 cpuLut3D(cLutData, cLutSize, r, g, b, lr, lg, lb);
                 if (cWpOn) {
-                    float tr = cWpMat[0]*lr + cWpMat[1]*lg + cWpMat[2]*lb;
-                    float tg = cWpMat[3]*lr + cWpMat[4]*lg + cWpMat[5]*lb;
-                    float tb = cWpMat[6]*lr + cWpMat[7]*lg + cWpMat[8]*lb;
-                    lr = tr; lg = tg; lb = tb;
+                    float lrLin = cpuDiToLinear(lr);
+                    float lgLin = cpuDiToLinear(lg);
+                    float lbLin = cpuDiToLinear(lb);
+                    float tr = cWpMat[0]*lrLin + cWpMat[1]*lgLin + cWpMat[2]*lbLin;
+                    float tg = cWpMat[3]*lrLin + cWpMat[4]*lgLin + cWpMat[5]*lbLin;
+                    float tb = cWpMat[6]*lrLin + cWpMat[7]*lgLin + cWpMat[8]*lbLin;
+                    lr = cpuLinearToDi(std::max(tr, 0.0f));
+                    lg = cpuLinearToDi(std::max(tg, 0.0f));
+                    lb = cpuLinearToDi(std::max(tb, 0.0f));
                 }
                 r += (lr - r) * cLutInt;
                 g += (lg - g) * cLutInt;
@@ -3064,6 +3098,15 @@ static OfxStatus actionRender(OfxImageEffectHandle effect,
         }
     } else {
         memset(curveBuf, 0, sizeof(curveBuf));
+    }
+
+    // A failed LUT upload must fail the export rather than sample a dummy buffer.
+    if (lutOnly && ((gp.lutEnabled && !lutBufPtr) ||
+                    (gp.inputCstLutSize > 0 && !inputCstBufPtr) ||
+                    (gp.cstLutSize > 0 && !outputCstBufPtr))) {
+        gEffectHost->clipReleaseImage(srcImg);
+        gEffectHost->clipReleaseImage(dstImg);
+        return kOfxStatFailed;
     }
 
     // ---- GPU dispatch ----
@@ -3111,7 +3154,9 @@ static OfxStatus actionRender(OfxImageEffectHandle effect,
     // kernel executes on GPU, and the result is copied back to the CPU
     // destination before returning.
 #ifdef __APPLE__
-    if (status != kOfxStatOK && srcPtr && dstPtr) {
+    int hostMetal = 0;
+    gPropHost->propGetInt(inArgs, kOfxImageEffectPropMetalEnabled, 0, &hostMetal);
+    if (!hostMetal && status != kOfxStatOK && srcPtr && dstPtr) {
         if (metalDispatchGrainFromCpu(srcPtr, dstPtr,
                                       lutBufPtr, outputCstBufPtr, inputCstBufPtr,
                                       gp, curveBuf)) {

@@ -101,6 +101,21 @@ struct GrainParams {
 
 static_assert(sizeof(GrainParams) == 376, "GrainParams size mismatch — Metal/C++ layout diverged");
 
+// Render-local override: retain all color parameters and leave saved UI values intact.
+inline void makeLutCompatible(GrainParams& p) {
+    p.grain_strength = 0.0f;
+    p.grain_opacity = 0.0f;
+    p.image_blur = 0.0f;
+    p.grain_blur_link = 0.0f;
+    p.halEnabled = 0;
+    p.diffusionEnabled = 0;
+    p.curveEnabled = 0;
+    p.debugMode = 0;
+    p.filmBlurPrepassEnabled = 0;
+    p.halBlurPrepassEnabled = 0;
+    p.diffusionScatterMode = 0;
+}
+
 // ---- Film format IDs ----
 #define FMT_65MM   0
 #define FMT_35MM   1
@@ -264,10 +279,10 @@ static_assert(sizeof(GrainParams) == 376, "GrainParams size mismatch — Metal/C
 // Legacy: kept for backward-compat loading but hidden in UI
 #define PARAM_SF_LOOK_INTENSITY "sf_look_intensity"
 
-#define PLUGIN_ID             "com.lofixfx.spectra"
-#define PLUGIN_LABEL          "LoFi FX Spectra"
-#define PLUGIN_GROUP          "LoFi FX"
+#define PLUGIN_ID             "com.looksupply.Spectra"
+#define PLUGIN_LABEL          "Spectra"
+#define PLUGIN_GROUP          "Look Supply"
 #define PLUGIN_VERSION_MAJOR  1
-#define PLUGIN_VERSION_MINOR  2
+#define PLUGIN_VERSION_MINOR  3
 
 #endif // GRAIN_PARAMS_H

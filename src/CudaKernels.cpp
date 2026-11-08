@@ -31,7 +31,7 @@ void cudaDispatchGrain(void*, void*, void*,
 #include <cstdio>
 
 bool cudaInit() {
-    fprintf(stderr, "LoFiFXSpectra: CUDA kernels not yet implemented\n");
+    fprintf(stderr, "LookSupplySpectra: CUDA kernels not yet implemented\n");
     return false;
 }
 void  cudaRelease()                                {}
